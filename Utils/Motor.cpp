@@ -6,19 +6,31 @@
 #include "Motor.h"
 
 
-Motor::Motor(char variant) {
+void Motor::init(char variant, bool reversed) {
     // channel A data
     this->variant = variant;
+
+    this->reversed = reversed;
 
     if(variant == 'A') {
         this->directionPin = new BoolPin(12);
         this->brakePin = new BoolPin(9);
         this->analogSpeedPin = 3;
+        // current sensing -> pin Analog 0
     } else {
-        this->directionPin = new BoolPin(12);
-        this->brakePin = new BoolPin(9);
-        this->analogSpeedPin = 3;
+        this->directionPin = new BoolPin(13);
+        this->brakePin = new BoolPin(8);
+        this->analogSpeedPin = 11;
+        // current sensing -> pin Analog 1
     }
+};
+
+Motor::Motor(char variant) {
+    init(variant, false);
+};
+
+Motor::Motor(char variant, bool reversed) {
+    init(variant, reversed);
 };
 
 Motor::~Motor() {
@@ -39,6 +51,7 @@ void Motor::setSpeed(int speed) {
 // speed > 0 => forward, speed < 0 => backward
 void Motor::go(int speed) {
     bool speedDirection = (speed > 0);
+    speedDirection = this->reversed ? !speedDirection : speedDirection;
 
     if(speed == 0) {
         this->brakePin->on();

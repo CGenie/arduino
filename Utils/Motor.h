@@ -11,13 +11,17 @@
 class Motor {
     private:
         char variant;  // 'A' or 'B'
+        bool reversed;
 
         BoolPin* directionPin;
         BoolPin* brakePin;
         int analogSpeedPin;
 
+        void init(char variant, bool reversed);  // constructor
+
     public:
         Motor(char variant);
+        Motor(char variant, bool reversed);
         ~Motor();
         
         void setup();
