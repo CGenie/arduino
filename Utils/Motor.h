@@ -15,7 +15,10 @@ class Motor {
 
         BoolPin* directionPin;
         BoolPin* brakePin;
+        BoolPin* encoderPin;
         int analogSpeedPin;
+        long encoderCount;
+        double targetAngle;
 
         void init(char variant, bool reversed);  // constructor
 
@@ -23,14 +26,26 @@ class Motor {
         Motor(char variant);
         Motor(char variant, bool reversed);
         ~Motor();
+
+        int currentSpeed;
+        int shaftRatio;
         
         void setup();
-        
+
+        double getEncoderAngle();  // in radians
+        bool getCurrentSpeedDirection();
         void setSpeed(int speed);
 
         // generic function for setting motor speed & direction
         // speed > 0 => forward, speed < 0 => backward
         void go(int speed);
+
+        // main encoder loop, call this function often to get good
+        // results
+        void computeEncoder();
+
+        void turnByAngle(double angle);
+        void loop();
 };
 
 #endif  // _MOTOR_H
