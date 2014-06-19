@@ -18,6 +18,7 @@
 #define _ACCELGYRO_H
 
 class AccelGyro;
+class AccelGyroKalman;
 class Calibrator;
 
 class Calibrator {
@@ -38,6 +39,7 @@ class Calibrator {
         double error(double val);
         void leftRightReset();
 };
+
 
 class AccelGyro {
     private:
@@ -60,6 +62,8 @@ class AccelGyro {
         Integrator *gzint;
         double agxint;
 
+        AccelGyroKalman *kalman;
+
         void setup();
         void calibrate();
         void compute();
@@ -71,7 +75,36 @@ class AccelGyro {
 
         // Serial.print compatible with arduino-pyplot
         void plotMotion6Normalized();
-        void plot();
+        void plot(int size, ...);
+};
+
+
+class AccelGyroKalman {
+    private:
+        //double gyroAngleRate;    // gyro angle rate reading
+        //double accAngle;         // accel angle reading
+        double y;                // innovation
+        double P[2][2];          // error covariance matrix
+        double K[2];             // Kalman gain
+        double S;                // innovation covariance
+        unsigned long last_time; // last time step
+
+        static const double Q_angle = 0.001;  // angle gyro measurement variance
+        static const double Q_bias = 0.003;   // gyro bias variance
+        static const double R_angle = 0.03;   // angle acceleration
+                                              // measurement variance
+    public:
+        AccelGyroKalman();
+        ~AccelGyroKalman();
+
+        double angle;               // filtered angle
+        double angleRate;           // rate of angle change
+        Integrator *angleIntegral;  // angle integral
+        double bias;                // filtered bias
+        double biasRate;            // rate of bias change
+
+        void compute(double accAngle, double gyroAngleRate);
+        void reset();
 };
 
 #endif  // _ACCELGYRO_H

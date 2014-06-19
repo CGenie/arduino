@@ -69,13 +69,18 @@ AccelGyro::AccelGyro() {
   gxint = new Integrator();
   gyint = new Integrator();
   gzint = new Integrator();
+
+  kalman = new AccelGyroKalman();
 };
 
 AccelGyro::~AccelGyro() {
   delete accelgyro;
+
   delete gxint;
   delete gyint;
   delete gzint;
+
+  delete kalman;
 };
 
 void AccelGyro::setup() {
@@ -97,6 +102,8 @@ void AccelGyro::setup() {
   gxint->reset();
   gyint->reset();
   gzint->reset();
+
+  kalman->reset();
 };
 
 void AccelGyro::calibrate() {
@@ -272,25 +279,104 @@ void AccelGyro::compute() {
   azn = 2*az;
   azn = (azn >= 0.99999) ? 0.99999 : azn;
 
-  azangle = 0.5*azangle + 0.5*zdirection*acos(azn);
+  //azangle = zdirection*acos(azn);
+  azangle = atan2(ay, az);
 
-  gxint->step(gx, azangle);
-  agxint = 0.5*agxint + 0.5*gxint->result;
+  //gxint->step(gx, azangle);
+  //agxint = 0.5*agxint + 0.5*gxint->result;
   //gyint->step(gy);
   //gzint->step(gz);
+
+  kalman->compute(azangle, gx);
 };
 
 // plot data from compute()
-void AccelGyro::plot() {
+void AccelGyro::plot(int num, ...) {
+  va_list arguments;
+
   double ax, ay, az, gx, gy, gz;
 
   getMotion6Normalized(&ax, &ay, &az, &gx, &gy, &gz);
 
   Serial.print("PLOT: ");
-  Serial.print(az);
+  // Serial.print("\t"); Serial.print(az);
   Serial.print("\t"); Serial.print(azangle);
-  Serial.print("\t"); Serial.print(gxint->result);
+  //Serial.print("\t"); Serial.print(gxint->result);
+  Serial.print("\t"); Serial.print(kalman->angle*2/M_PI);
+  Serial.print("\t"); Serial.print(kalman->angleRate*2/M_PI);
+  Serial.print("\t"); Serial.print(kalman->angleIntegral->result*2/M_PI);
+  //Serial.print("\t"); Serial.print(kalman->bias);
   //Serial.print("\t"); Serial.print(gyint->result);
   //Serial.print("\t"); Serial.print(gzint->result);
+
+  va_start(arguments, num);
+  for(int i = 0; i < num; i++) {
+    Serial.print("\t"); Serial.print(va_arg(arguments, double));
+  }
+  va_end(arguments);
+
   Serial.println("\tENDPLOT");
+};
+
+
+AccelGyroKalman::AccelGyroKalman() {
+  // We assume calibrated, steady, straight position at beginning
+  angleIntegral = new Integrator();
+  reset();
+};
+
+AccelGyroKalman::~AccelGyroKalman() {
+  delete angleIntegral;
+};
+
+void AccelGyroKalman::compute(double accAngle, double gyroAngleRate) {
+  unsigned long new_time = millis();
+  double dt = (new_time - last_time)/1000.0;
+  double oldAngle = angle;
+  double oldBias = bias;
+
+  last_time = new_time;
+
+  angle += dt*(gyroAngleRate - bias);
+
+  P[0][0] += dt*(Q_angle - P[1][0] - P[0][1] + dt*P[1][1]);
+  P[0][1] -= dt*P[1][1];
+  P[1][0] -= dt*P[1][1];
+  P[1][1] += dt*Q_bias;
+
+  y = accAngle - angle;
+
+  S = P[0][0] + R_angle;
+
+  K[0] = P[0][0]/S;
+  K[1] = P[1][0]/S;
+
+  angle += K[0]*y;
+  bias += K[1]*y;
+
+  P[0][0] -= K[0]*P[0][0];
+  P[0][1] -= K[0]*P[0][1];
+  P[1][0] -= K[1]*P[0][0];
+  P[1][1] -= K[1]*P[0][1];
+
+  angleRate = (angle - oldAngle)/dt;
+  biasRate = (bias - oldBias)/dt;
+
+  angleIntegral->step(angle);
+};
+
+void AccelGyroKalman::reset() {
+  angle = 0.0;
+  bias = 0.0;
+  P[0][0] = 0.0;
+  P[0][1] = 0.0;
+  P[1][0] = 0.0;
+  P[1][1] = 0.0;
+  K[0] = 0.0;
+  K[1] = 0.0;
+  S = 0.0;
+
+  angleIntegral->reset();
+
+  last_time = millis();
 };
