@@ -1,4 +1,4 @@
-// Generic class for performing tasks om specific intervals
+// Generic class for performing tasks on specific time intervals
 // Helps get rid of delay() clutter
 
 // Uses the LinkedList library implementation
@@ -11,6 +11,7 @@
 #include <LinkedList.h>
 
 
+// Interface for a scheduler task
 class ITask {
     public:
         unsigned long delay;  // interval for calling the work() function, in milliseconds
@@ -29,6 +30,7 @@ class TaskWithTick {
         TaskWithTick(ITask* task);
         ~TaskWithTick();
 };
+
 
 class Scheduler {
     private:

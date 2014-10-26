@@ -11,7 +11,7 @@
 class Motor {
     private:
         char variant;  // 'A' or 'B'
-        bool reversed;
+        bool reversed;  // does the motor rotate in reverse
 
         BoolPin* directionPin;
         BoolPin* brakePin;
